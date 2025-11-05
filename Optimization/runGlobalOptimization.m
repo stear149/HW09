@@ -40,7 +40,7 @@ function [] = runGlobalOptimization()
         'Display', 'iter', ...     
         'UseParallel', true, ...
         'EliteCount',20,...
-        'FunctionTolerance', 1e-6,...
+        'FunctionTolerance', 1e-7,...
         'MaxStallGenerations',50,...
         'HybridFcn', {@fmincon, fmincon_options}); % Use fmincon to polish
     
@@ -147,6 +147,24 @@ function [] = runGlobalOptimization()
     
     % Recalculate Q_total with the rounded values for reporting
     min_Q_rounded = objectiveFcn(best_x_rounded);
+
+    fprintf('\n\n--------------------------------------------------------------------------------------');
+fprintf('\nFinal Q_total and Optimal Parameters from each layout run (before final rounding):\n');
+    for layout_idx = 1:8
+        fval = optimal_fvals(layout_idx);
+        
+        if isinf(fval)
+            fprintf('Layout %d: FAILED (Infeasible)\n', layout_idx);
+        else
+            x_opt = results{layout_idx}.x_opt;
+            
+            % Format the p-values for clear display
+            p_values_str = sprintf('[%5.1f, %5.1f, %5.3f, %5.3f, %5.3f]', x_opt);
+            
+            fprintf('Layout %d: Q_total = %f m^3/day, Optimal Parameters x_opt = %s\n', ...
+                    layout_idx, fval, p_values_str);
+        end
+    end
 
     fprintf('\n\n==============================================\n');
     fprintf('        GLOBAL OPTIMIZATION COMPLETE \n');
