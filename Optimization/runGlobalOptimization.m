@@ -1,5 +1,5 @@
 function [] = runGlobalOptimization()
-% RUNGLOBALOPTIMIZATION runs GA (global) + fmincon (local) for all 4 layouts.
+% RUNGLOBALOPTIMIZATION runs GA (global) + fmincon (local) for all 8 layouts.
 %
 %   This function uses the Genetic Algorithm (ga) for a robust global
 %   search, and then automatically uses fmincon as a 'HybridFcn' to
@@ -11,7 +11,7 @@ function [] = runGlobalOptimization()
 %   x = [p1, p2, p3, p4, p5]
 %
 
-    disp('Starting GLOBAL optimization (GA + fmincon) for all 4 layouts...');
+    disp('Starting GLOBAL optimization (GA + fmincon) for all 8 layouts...');
     
     % --- Start Parallel Pool (if you have the Parallel Toolbox) ---
     if isempty(gcp('nocreate')) % If no pool exists
@@ -24,8 +24,8 @@ function [] = runGlobalOptimization()
     end
     
     % Store results
-    results = cell(4, 1);
-    optimal_fvals = NaN(4, 1);
+    results = cell(8, 1); % Updated to 8 results
+    optimal_fvals = NaN(8, 1); % Updated to 8 results
     
     % --- 1. Define Options for GA and FMINCON ---
     
@@ -43,27 +43,49 @@ function [] = runGlobalOptimization()
     
     nvars = 5; % Number of variables (p1, p2, p3, p4, p5)
         
-    for layout = 1:4
+    for layout = 1:8 % Updated loop to run 8 layouts
         fprintf('\n\n--- RUNNING GA FOR LAYOUT %d ---\n', layout);
         
-        % --- 2. Define bounds (lb, ub) ---
+        % --- 2. Define bounds (lb, ub) based on new cases ---
         % x = [p1, p2, p3, p4, p5]
+        % Bounds for Q rates (p3, p4, p5) are assumed to be [0, 500]
+        max_Q = 500; 
+
         switch layout
-            case 1 % 2-2-1
+            case 1 % 2-2-1: p1=[0,100], p2=[300,500]
                 lb = [0,   300, 0, 0, 0];
-                ub = [100, 500, 500, 500, 500];
+                ub = [100, 500, max_Q, max_Q, max_Q];
                 
-            case 2 % 3-2-0
-                lb = [0,   300, 0, 0, 0];
-                ub = [100, 500, 500, 500, 500];
-                
-            case 3 % 1-4-0
-                lb = [300, 300, 0, 0, 0];
-                ub = [500, 500, 500, 500, 500];
-                
-            case 4 % 1-2-2
+            case 2 % 1-2-2: p1=[300,500], p2=[0,100]
                 lb = [300, 0,   0, 0, 0];
-                ub = [500, 100, 500, 500, 500];
+                ub = [500, 100, max_Q, max_Q, max_Q];
+                
+            case 3 % 3-2-0: p1=[0,100], p2=[300,500]
+                lb = [0,   300, 0, 0, 0];
+                ub = [100, 500, max_Q, max_Q, max_Q];
+                
+            case 4 % 3-0-2: p1=[0,100], p2=[0,100]
+                lb = [0,   0,   0, 0, 0];
+                ub = [100, 100, max_Q, max_Q, max_Q];
+
+            case 5 % 2-0-3: p1=[0,100], p2=[0,100]
+                lb = [0,   0,   0, 0, 0];
+                ub = [100, 100, max_Q, max_Q, max_Q];
+
+            case 6 % 0-2-3: p1=[300,500], p2=[0,100]
+                lb = [300, 0,   0, 0, 0];
+                ub = [500, 100, max_Q, max_Q, max_Q];
+
+            case 7 % 1-4-0: p1=[300,500], p2=[300,500]
+                lb = [300, 300, 0, 0, 0];
+                ub = [500, 500, max_Q, max_Q, max_Q];
+
+            case 8 % 0-4-1: p1=[300,500], p2=[300,500]
+                lb = [300, 300, 0, 0, 0];
+                ub = [500, 500, max_Q, max_Q, max_Q];
+
+            otherwise
+                error('Invalid layout index: %d', layout);
         end
         
         % --- 3. Define function handles ---
