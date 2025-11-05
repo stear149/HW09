@@ -1,4 +1,4 @@
-function [] = runGlobalOptimization()
+function [AllLayoutResults] = runGlobalOptimization()
 % RUNGLOBALOPTIMIZATION runs GA (global) + fmincon (local) for all 8 layouts.
 %
 %   This function uses the Genetic Algorithm (ga) for a robust global
@@ -121,7 +121,7 @@ function [] = runGlobalOptimization()
                 fprintf('Continuous Q_total: %f m^3/day\n', fval);
             end
             
-        catch ME
+            catch ME
             fprintf('--- LAYOUT %d FAILED TO SOLVE --- \n', layout);
             disp(ME.message);
             results{layout}.x_opt = [];
@@ -130,41 +130,53 @@ function [] = runGlobalOptimization()
         end
     end
     
-    % --- 5. Find Best Solution, Apply Rounding, and Report ---
-    [min_Q, best_layout_idx] = min(optimal_fvals);
+    % --- 5. Assemble and Return Results ---
     
-    if isinf(min_Q)
-        disp(' ');
-        disp('*** ALL OPTIMIZATIONS FAILED ***');
-        disp('Could not find a compliant solution for any layout.');
-        return;
+    % Initialize the matrix to store results for all 8 layouts: [Q_total, p1, p2, p3, p4, p5]
+    
+    AllLayoutResults = NaN(8, 6); 
+    
+    fprintf('\n\n--- SUMMARY OF CONTINUOUS OPTIMIZATION RESULTS ---\n');
+    for layout_idx = 1:8
+        fval = optimal_fvals(layout_idx);
+        
+        if isinf(fval)
+            % Record NaNs for failed runs
+            fprintf('Layout %d: FAILED (Infeasible). Results set to NaN.\n', layout_idx);
+        else
+            x_opt = results{layout_idx}.x_opt;
+            
+            % Store [Q_total, p1, p2, p3, p4, p5] in the matrix
+            AllLayoutResults(layout_idx, :) = [fval, x_opt];
+            
+            % Report results (similar to your previous request)
+            p_values_str = sprintf('[%5.1f, %5.1f, %5.3f, %5.3f, %5.3f]', x_opt);
+            fprintf('Layout %d: Q_total = %f m^3/day, x_opt = %s\n', ...
+                    layout_idx, fval, p_values_str);
+        end
     end
     
-    best_x = results{best_layout_idx}.x_opt;
+    % --- 6. Find Best Solution, Apply Rounding, and Report ---
+    % Find the minimum Q_total from the successful, continuous runs
+    valid_fvals = AllLayoutResults(~isinf(AllLayoutResults(:,1)), 1);
+    if isempty(valid_fvals)
+        disp(' ');
+        disp('*** ALL OPTIMIZATIONS FAILED ***');
+        disp('Could not find a compliant solution for any layout. Returning NaN matrix.');
+        % AllLayoutResults already contains NaNs or Inf for failed runs
+        return; 
+    end
+    
+    [min_Q, best_row_idx] = min(AllLayoutResults(:, 1)); % Find min from the result matrix
+    
+    best_x = AllLayoutResults(best_row_idx, 2:end); % Parameters p1-p5
+    best_layout_idx = best_row_idx; % Layout index is the row index
     
     % Apply the required rounding to the best continuous solution
     best_x_rounded = roundOptimalSolution(best_x);
     
     % Recalculate Q_total with the rounded values for reporting
     min_Q_rounded = objectiveFcn(best_x_rounded);
-
-    fprintf('\n\n--------------------------------------------------------------------------------------');
-fprintf('\nFinal Q_total and Optimal Parameters from each layout run (before final rounding):\n');
-    for layout_idx = 1:8
-        fval = optimal_fvals(layout_idx);
-        
-        if isinf(fval)
-            fprintf('Layout %d: FAILED (Infeasible)\n', layout_idx);
-        else
-            x_opt = results{layout_idx}.x_opt;
-            
-            % Format the p-values for clear display
-            p_values_str = sprintf('[%5.1f, %5.1f, %5.3f, %5.3f, %5.3f]', x_opt);
-            
-            fprintf('Layout %d: Q_total = %f m^3/day, Optimal Parameters x_opt = %s\n', ...
-                    layout_idx, fval, p_values_str);
-        end
-    end
 
     fprintf('\n\n==============================================\n');
     fprintf('        GLOBAL OPTIMIZATION COMPLETE \n');
@@ -174,10 +186,10 @@ fprintf('\nFinal Q_total and Optimal Parameters from each layout run (before fin
     disp('Optimal Parameters (Rounded) [p1 (0.5m), p2 (0.5m), Q (3 dec)]:');
     disp(best_x_rounded);
     
-    % --- 6. Build the final Wells matrix for the best *rounded* solution ---
+    % --- 7. Build the final Wells matrix for the best *rounded* solution ---
     Wells_final = buildWellsMatrix(best_x_rounded, best_layout_idx);
     
-    % --- 7. Visualize and check the final solution ---
+    % --- 8. Visualize and check the final solution ---
     disp('Visualizing the best rounded solution...');
     headGrid_final = drawSite(Wells_final(:,1), Wells_final(:,2), Wells_final(:,3));
     
