@@ -5,7 +5,8 @@ function [] = runGlobalOptimization()
 %   search, and then automatically uses fmincon as a 'HybridFcn' to
 %   refine the result to a precise local minimum.
 %
-%   This is the most robust way to find the true optimal solution.
+%   A final rounding step is applied to the optimal parameters before 
+%   the compliance check and visualization.
 %
 %   x = [p1, p2, p3, p4, p5]
 %
@@ -13,7 +14,6 @@ function [] = runGlobalOptimization()
     disp('Starting GLOBAL optimization (GA + fmincon) for all 4 layouts...');
     
     % --- Start Parallel Pool (if you have the Parallel Toolbox) ---
-    % GA runs much faster in parallel.
     if isempty(gcp('nocreate')) % If no pool exists
         try
             parpool; % Start a new parallel pool
@@ -29,17 +29,16 @@ function [] = runGlobalOptimization()
     
     % --- 1. Define Options for GA and FMINCON ---
     
-    % First, create options for the 'fmincon' hybrid function
-    % We want it to be quiet, since GA will be reporting progress.
+    % Options for the 'fmincon' hybrid function (fast local refinement)
     fmincon_options = optimoptions('fmincon', ...
         'Algorithm', 'sqp', ...
-        'Display', 'none', ... % 'fmincon' itself will be silent
+        'Display', 'none', ... 
         'MaxFunctionEvaluations', 1000);
 
-    % Now, create options for 'ga'
+    % Options for 'ga' (global search)
     ga_options = optimoptions('ga', ...
-        'Display', 'iter', ...     % Show GA's progress
-        'UseParallel', true, ...   % CRITICAL for speed
+        'Display', 'iter', ...     
+        'UseParallel', true, ...   
         'HybridFcn', {@fmincon, fmincon_options}); % Use fmincon to polish
     
     nvars = 5; % Number of variables (p1, p2, p3, p4, p5)
@@ -68,22 +67,21 @@ function [] = runGlobalOptimization()
         end
         
         % --- 3. Define function handles ---
-        objFun = @objectiveFcn; % Objective is the same for all
-        conFun = @(x) constraintFcn(x, layout); % Pass layout
+        objFun = @objectiveFcn; 
+        conFun = @(x) constraintFcn(x, layout); 
         
         % --- 4. Run ga ---
-        % GA does not require an initial guess (x0)
         try
             [x_opt, fval] = ga(objFun, nvars, ...
-                [], [], ...     % A, b (no linear inequality constraints)
-                [], [], ...     % Aeq, beq (no linear equality constraints)
+                [], [], ...     % A, b 
+                [], [], ...     % Aeq, beq 
                 lb, ub, ...     % Lower and upper bounds
                 conFun, ...     % Nonlinear constraint function
                 ga_options);    % GA options
             
-            % Check if solution is actually valid
+            % Check if the solution is compliant (constraint c <= 0)
             [c_final, ~] = conFun(x_opt);
-            if c_final > 1e-3 % Check if constraint is violated
+            if c_final > 1e-3 
                 fprintf('--- LAYOUT %d FAILED --- \n', layout);
                 disp('Optimizer returned an infeasible solution (head > 25m).');
                 results{layout}.x_opt = [];
@@ -95,9 +93,7 @@ function [] = runGlobalOptimization()
                 optimal_fvals(layout) = fval;
                 
                 fprintf('--- LAYOUT %d COMPLETE --- \n', layout);
-                disp('Optimal parameters [p1, p2, p3, p4, p5]:');
-                disp(x_opt);
-                fprintf('Minimum Q_total: %f m^3/day\n', fval);
+                fprintf('Continuous Q_total: %f m^3/day\n', fval);
             end
             
         catch ME
@@ -109,7 +105,7 @@ function [] = runGlobalOptimization()
         end
     end
     
-    % --- 5. Find and report the best layout ---
+    % --- 5. Find Best Solution, Apply Rounding, and Report ---
     [min_Q, best_layout_idx] = min(optimal_fvals);
     
     if isinf(min_Q)
@@ -121,22 +117,28 @@ function [] = runGlobalOptimization()
     
     best_x = results{best_layout_idx}.x_opt;
     
+    % Apply the required rounding to the best continuous solution
+    best_x_rounded = roundOptimalSolution(best_x);
+    
+    % Recalculate Q_total with the rounded values for reporting
+    min_Q_rounded = objectiveFcn(best_x_rounded);
+
     fprintf('\n\n==============================================\n');
     fprintf('        GLOBAL OPTIMIZATION COMPLETE \n');
     fprintf('==============================================\n');
     fprintf('Best Layout: %d\n', best_layout_idx);
-    fprintf('Minimum Q_total: %f m^3/day\n', min_Q);
-    disp('Optimal Parameters [p1, p2, p3, p4, p5]:');
-    disp(best_x);
+    fprintf('Minimum Q_total (Rounded): %f m^3/day\n', min_Q_rounded);
+    disp('Optimal Parameters (Rounded) [p1 (0.5m), p2 (0.5m), Q (3 dec)]:');
+    disp(best_x_rounded);
     
-    % --- 6. Build the final Wells matrix for the best solution ---
-    Wells_final = buildWellsMatrix(best_x, best_layout_idx);
+    % --- 6. Build the final Wells matrix for the best *rounded* solution ---
+    Wells_final = buildWellsMatrix(best_x_rounded, best_layout_idx);
     
     % --- 7. Visualize and check the final solution ---
-    disp('Visualizing the best solution...');
+    disp('Visualizing the best rounded solution...');
     headGrid_final = drawSite(Wells_final(:,1), Wells_final(:,2), Wells_final(:,3));
     
-    disp('Running final compliance check on the best solution:');
+    disp('Running final compliance check on the best ROUNDED solution:');
     complianceChecker(headGrid_final);
 
 end
