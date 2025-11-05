@@ -1,6 +1,6 @@
 function [c, ceq] = constraintFcn(x, layout)
 % CONSTRAINTFCN runs the simulation and returns the constraint value.
-% fmincon tries to make c <= 0.
+% fmincon/ga tries to make c <= 0.
 % We define c = max_head_in_excavation - 25.
 %
 % x = [p1, p2, p3, p4, p5]
@@ -14,7 +14,6 @@ function [c, ceq] = constraintFcn(x, layout)
     headGrid = NaN(41, 61);
 
     % --- 3. Compute Head Grid ---
-    % This is the core simulation part
     for row = 1:41
         for col = 1:61
             headGrid(row, col) = computeHead(xgrid(col), ygrid(row), ...
@@ -23,7 +22,6 @@ function [c, ceq] = constraintFcn(x, layout)
     end
     
     % --- 4. Extract Excavation Heads ---
-    % These indices are from your complianceChecker
     x_start_index = 31; % (300 / 10) + 1
     x_end_index = 51;   % (500 / 10) + 1
     y_start_index = 11; % (-100 - (-200)) / 10 + 1
@@ -35,9 +33,7 @@ function [c, ceq] = constraintFcn(x, layout)
     h_floor = 25;
     max_h = max(excavationHeads(:)); % Find the single max value
     
-    % fmincon wants c <= 0.
-    % Our requirement is max_h <= h_floor.
-    % So, we set c = max_h - h_floor.
+    % c <= 0 for compliant solution
     c = max_h - h_floor;
     
     % We have no equality constraints

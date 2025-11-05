@@ -61,7 +61,6 @@ function [Wells] = buildWellsMatrix(x, layout)
     end
     
     % Q Vals (Pumping Rates)
-    % This is the *correct* assignment, fixing the bug.
     Wells(1:2,3) = p3;  % Q rate pump 1 & 2
     Wells(3:4,3) = p4;  % Q rate pump 3 & 4
     Wells(5,3) = p5;    % Q rate pump 5
