@@ -10,6 +10,9 @@ function [AllLayoutResults] = runGlobalOptimization()
 %
 %   x = [p1, p2, p3, p4, p5]
 %
+%   OUTPUT:
+%   AllLayoutResults (8x6 matrix): [Q_total, p1, p2, p3, p4, p5] for all 8 layouts.
+%   Infeasible solutions will have Q_total = Inf.
 
     disp('Starting GLOBAL optimization (GA + fmincon) for all 8 layouts...');
     
@@ -45,6 +48,9 @@ function [AllLayoutResults] = runGlobalOptimization()
         'HybridFcn', {@fmincon, fmincon_options}); % Use fmincon to polish
     
     nvars = 5; % Number of variables (p1, p2, p3, p4, p5)
+    
+    % Initialize the matrix to store results for all 8 layouts: [Q_total, p1, p2, p3, p4, p5]
+    AllLayoutResults = NaN(8, 6); 
         
     for layout = 1:8 % Updated loop to run 8 layouts
         fprintf('\n\n--- RUNNING GA FOR LAYOUT %d ---\n', layout);
@@ -109,65 +115,57 @@ function [AllLayoutResults] = runGlobalOptimization()
             if c_final > 1e-3 
                 fprintf('--- LAYOUT %d FAILED --- \n', layout);
                 disp('Optimizer returned an infeasible solution (head > 25m).');
-                results{layout}.x_opt = [];
-                results{layout}.fval = Inf;
-                optimal_fvals(layout) = Inf;
+                fval_final = Inf;
+                x_opt_final = NaN(1, 5); % Use NaN for parameters
             else
-                results{layout}.x_opt = x_opt;
-                results{layout}.fval = fval;
-                optimal_fvals(layout) = fval;
+                fval_final = fval;
+                x_opt_final = x_opt;
                 
                 fprintf('--- LAYOUT %d COMPLETE --- \n', layout);
-                fprintf('Continuous Q_total: %f m^3/day\n', fval);
+                fprintf('Continuous Q_total: %f m^3/day\n', fval_final);
             end
             
-            catch ME
+        catch ME
             fprintf('--- LAYOUT %d FAILED TO SOLVE --- \n', layout);
             disp(ME.message);
-            results{layout}.x_opt = [];
-            results{layout}.fval = Inf;
-            optimal_fvals(layout) = Inf;
+            fval_final = Inf;
+            x_opt_final = NaN(1, 5); % Use NaN for parameters
         end
+
+        % Store results for returning
+        AllLayoutResults(layout, :) = [fval_final, x_opt_final];
     end
     
-    % --- 5. Assemble and Return Results ---
-    
-    % Initialize the matrix to store results for all 8 layouts: [Q_total, p1, p2, p3, p4, p5]
-    
-    AllLayoutResults = NaN(8, 6); 
+    % --- 5. Report and Finalize Results ---
     
     fprintf('\n\n--- SUMMARY OF CONTINUOUS OPTIMIZATION RESULTS ---\n');
+    valid_results = AllLayoutResults(~isinf(AllLayoutResults(:,1)), :);
+    
+    if isempty(valid_results)
+        disp(' ');
+        disp('*** ALL OPTIMIZATIONS FAILED ***');
+        disp('Could not find a compliant solution for any layout. Returning NaN/Inf matrix.');
+        return;
+    end
+
+    % Report results for each layout run
     for layout_idx = 1:8
-        fval = optimal_fvals(layout_idx);
+        fval = AllLayoutResults(layout_idx, 1);
         
         if isinf(fval)
-            % Record NaNs for failed runs
-            fprintf('Layout %d: FAILED (Infeasible). Results set to NaN.\n', layout_idx);
+            fprintf('Layout %d: FAILED (Infeasible). Results set to Inf/NaN.\n', layout_idx);
         else
-            x_opt = results{layout_idx}.x_opt;
-            
-            % Store [Q_total, p1, p2, p3, p4, p5] in the matrix
-            AllLayoutResults(layout_idx, :) = [fval, x_opt];
-            
-            % Report results (similar to your previous request)
+            x_opt = AllLayoutResults(layout_idx, 2:end);
+            % Format the p-values for clear display
             p_values_str = sprintf('[%5.1f, %5.1f, %5.3f, %5.3f, %5.3f]', x_opt);
+            
             fprintf('Layout %d: Q_total = %f m^3/day, x_opt = %s\n', ...
                     layout_idx, fval, p_values_str);
         end
     end
-    
-    % --- 6. Find Best Solution, Apply Rounding, and Report ---
-    % Find the minimum Q_total from the successful, continuous runs
-    valid_fvals = AllLayoutResults(~isinf(AllLayoutResults(:,1)), 1);
-    if isempty(valid_fvals)
-        disp(' ');
-        disp('*** ALL OPTIMIZATIONS FAILED ***');
-        disp('Could not find a compliant solution for any layout. Returning NaN matrix.');
-        % AllLayoutResults already contains NaNs or Inf for failed runs
-        return; 
-    end
-    
-    [min_Q, best_row_idx] = min(AllLayoutResults(:, 1)); % Find min from the result matrix
+
+    % Find the best continuous solution for visualization
+    [min_Q, best_row_idx] = min(AllLayoutResults(:, 1));
     
     best_x = AllLayoutResults(best_row_idx, 2:end); % Parameters p1-p5
     best_layout_idx = best_row_idx; % Layout index is the row index
@@ -186,10 +184,10 @@ function [AllLayoutResults] = runGlobalOptimization()
     disp('Optimal Parameters (Rounded) [p1 (0.5m), p2 (0.5m), Q (3 dec)]:');
     disp(best_x_rounded);
     
-    % --- 7. Build the final Wells matrix for the best *rounded* solution ---
+    % --- 6. Build the final Wells matrix for the best *rounded* solution ---
     Wells_final = buildWellsMatrix(best_x_rounded, best_layout_idx);
     
-    % --- 8. Visualize and check the final solution ---
+    % --- 7. Visualize and check the final solution ---
     disp('Visualizing the best rounded solution...');
     headGrid_final = drawSite(Wells_final(:,1), Wells_final(:,2), Wells_final(:,3));
     
