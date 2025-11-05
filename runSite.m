@@ -29,7 +29,7 @@
 %   University of Minnesota
 %
 %   Current Best:
-%       runSite(83.9, 441.4, 204.5, 353.9, 99.2, 3, true, true)
+%       runSite(84, 441.5, 204.5, 353.9, 99.2, 3, true, true)
 %       Amax = [1216]
 %
 % Version:
