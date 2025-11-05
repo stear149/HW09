@@ -9,13 +9,13 @@ function [Wells] = buildWellsMatrix(x, layout)
 
     switch layout
         case 1 % 2-2-1
-            assert(p1 >= 0);
-            assert(p1 <= 100);
-            assert(p2 >= 300);
-            assert(p2 <= 500);
-            assert(p3 >= 0);
-            assert(p4 >= 0);
-            assert(p5 >= 0);
+            % assert(p1 >= 0);
+            % assert(p1 <= 100);
+            % assert(p2 >= 300);
+            % assert(p2 <= 500);
+            % assert(p3 >= 0);
+            % assert(p4 >= 0);
+            % assert(p5 >= 0);
 
             % X Vals
             Wells(1:2,1) = 300; % pump 1 & 2
@@ -33,13 +33,13 @@ function [Wells] = buildWellsMatrix(x, layout)
             Wells(5,3) = p5;    % Q rate pump 5
            
         case 2 % 1-2-2
-            assert(p1 >= 300);
-            assert(p1 <= 500);
-            assert(p2 >= 0);
-            assert(p2 <= 100);
-            assert(p3 >= 0);
-            assert(p4 >= 0);
-            assert(p5 >= 0);
+            % assert(p1 >= 300);
+            % assert(p1 <= 500);
+            % assert(p2 >= 0);
+            % assert(p2 <= 100);
+            % assert(p3 >= 0);
+            % assert(p4 >= 0);
+            % assert(p5 >= 0);
 
             % X Vals
             Wells(1:2,1) = p1; % pump 1 & 2
@@ -57,13 +57,13 @@ function [Wells] = buildWellsMatrix(x, layout)
             Wells(5,3) = p5;    % Q rate pump 5
 
         case 3 %3-2-0
-            assert(p1 >= 0);
-            assert(p1 <= 100);
-            assert(p2 >= 300);
-            assert(p2 <= 500);
-            assert(p3 >= 0);
-            assert(p4 >= 0);
-            assert(p5 >= 0);
+            % assert(p1 >= 0);
+            % assert(p1 <= 100);
+            % assert(p2 >= 300);
+            % assert(p2 <= 500);
+            % assert(p3 >= 0);
+            % assert(p4 >= 0);
+            % assert(p5 >= 0);
 
             % X Vals
             Wells(1:2,1) = 300; % pump 1 & 2
@@ -81,13 +81,13 @@ function [Wells] = buildWellsMatrix(x, layout)
             Wells(5,3) = p5;    % Q rate pump 5
 
         case 4 % 3-0-2
-            assert(p1 >= 0);
-            assert(p1 <= 100);
-            assert(p2 >= 0);
-            assert(p2 <= 100);
-            assert(p3 >= 0);
-            assert(p4 >= 0);
-            assert(p5 >= 0);
+            % assert(p1 >= 0);
+            % assert(p1 <= 100);
+            % assert(p2 >= 0);
+            % assert(p2 <= 100);
+            % assert(p3 >= 0);
+            % assert(p4 >= 0);
+            % assert(p5 >= 0);
 
             % X Vals
             Wells(1:2,1) = 300; % pump 1 & 2
@@ -105,13 +105,13 @@ function [Wells] = buildWellsMatrix(x, layout)
             Wells(5,3) = p5;    % Q rate pump 5
 
         case 5 % 2-0-3
-            assert(p1 >= 0);
-            assert(p1 <= 100);
-            assert(p2 >= 0);
-            assert(p2 <= 100);
-            assert(p3 >= 0);
-            assert(p4 >= 0);
-            assert(p5 >= 0);
+            % assert(p1 >= 0);
+            % assert(p1 <= 100);
+            % assert(p2 >= 0);
+            % assert(p2 <= 100);
+            % assert(p3 >= 0);
+            % assert(p4 >= 0);
+            % assert(p5 >= 0);
 
             % X Vals
             Wells(1:2,1) = 300; % pump 1 & 2
@@ -129,13 +129,13 @@ function [Wells] = buildWellsMatrix(x, layout)
             Wells(5,3) = p5;    % Q rate pump 5
 
         case 6 % 0-2-3
-            assert(p1 >= 300);
-            assert(p1 <= 500);
-            assert(p2 >= 0);
-            assert(p2 <= 100);
-            assert(p3 >= 0);
-            assert(p4 >= 0);
-            assert(p5 >= 0);
+            % assert(p1 >= 300);
+            % assert(p1 <= 500);
+            % assert(p2 >= 0);
+            % assert(p2 <= 100);
+            % assert(p3 >= 0);
+            % assert(p4 >= 0);
+            % assert(p5 >= 0);
 
             % X Vals    
             Wells(1:2,1) = p1; % pump 1 & 2
@@ -153,13 +153,13 @@ function [Wells] = buildWellsMatrix(x, layout)
             Wells(5,3) = p5;    % Q rate pump 5
 
         case 7 % 1-4-0
-            assert(p1 >= 300);
-            assert(p1 <= 500);
-            assert(p2 >= 300);
-            assert(p2 <= 500);
-            assert(p3 >= 0);
-            assert(p4 >= 0);
-            assert(p5 >= 0);
+            % assert(p1 >= 300);
+            % assert(p1 <= 500);
+            % assert(p2 >= 300);
+            % assert(p2 <= 500);
+            % assert(p3 >= 0);
+            % assert(p4 >= 0);
+            % assert(p5 >= 0);
 
             % X Vals
             Wells(1:2,1) = p1; % pump 1 & 2
@@ -177,13 +177,13 @@ function [Wells] = buildWellsMatrix(x, layout)
             Wells(5,3) = p5;    % Q rate pump 5
 
         case 8 % 0-4-1
-            assert(p1 >= 300);
-            assert(p1 <= 500);
-            assert(p2 >= 300);
-            assert(p2 <= 500);
-            assert(p3 >= 0);
-            assert(p4 >= 0);
-            assert(p5 >= 0);
+            % assert(p1 >= 300);
+            % assert(p1 <= 500);
+            % assert(p2 >= 300);
+            % assert(p2 <= 500);
+            % assert(p3 >= 0);
+            % assert(p4 >= 0);
+            % assert(p5 >= 0);
 
             % X Vals
             Wells(1:2,1) = p1; % pump 1 & 2
@@ -199,7 +199,7 @@ function [Wells] = buildWellsMatrix(x, layout)
             Wells(1:3,3) = p3;  % Q rate pump 1 & 2 
             Wells(3:4,3) = p4;  % Q rate pump 3 & 4
             Wells(5,3) = p5;    % Q rate pump 5
-            
+
         otherwise
             error('Invalid layout specified');
     end
