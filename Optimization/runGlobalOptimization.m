@@ -1,18 +1,20 @@
 function [AllLayoutResults] = runGlobalOptimization()
 % RUNGLOBALOPTIMIZATION runs GA (global) + fmincon (local) for all 8 layouts.
 %
-%   This function uses the Genetic Algorithm (ga) for a robust global
-%   search, and then automatically uses fmincon as a 'HybridFcn' to
-%   refine the result to a precise local minimum.
+% This function uses the Genetic Algorithm (ga) for a robust global
+% search, and then automatically uses fmincon as a 'HybridFcn' to
+% refine the result to a precise local minimum.
 %
-%   A final rounding step is applied to the optimal parameters before 
-%   the compliance check and visualization.
+% A CRITICAL POST-ROUNDING REFINEMENT STEP is added:
+% If the optimal rounded solution is infeasible, fmincon is used to 
+% push it back into the compliant region, ensuring the final output passes 
+% the compliance check (max head <= 25m).
 %
-%   x = [p1, p2, p3, p4, p5]
+% x = [p1, p2, p3, p4, p5]
 %
-%   OUTPUT:
-%   AllLayoutResults (8x6 matrix): [Q_total, p1, p2, p3, p4, p5] for all 8 layouts.
-%   Infeasible solutions will have Q_total = Inf.
+% OUTPUT:
+% AllLayoutResults (8x6 matrix): [Q_total, p1, p2, p3, p4, p5] for all 8 layouts.
+% Infeasible solutions will have Q_total = Inf.
 
     disp('Starting GLOBAL optimization (GA + fmincon) for all 8 layouts...');
     
@@ -35,6 +37,7 @@ function [AllLayoutResults] = runGlobalOptimization()
     % Options for the 'fmincon' hybrid function (fast local refinement)
     fmincon_options = optimoptions('fmincon', ...
         'Algorithm', 'sqp', ...
+        'FunctionTolerance', 1e-5,...
         'Display', 'none', ... 
         'MaxFunctionEvaluations', 1000);
 
@@ -57,45 +60,7 @@ function [AllLayoutResults] = runGlobalOptimization()
         
         % --- 2. Define bounds (lb, ub) based on new cases ---
         % x = [p1, p2, p3, p4, p5]
-        % Bounds for Q rates (p3, p4, p5) are assumed to be [0, 500]
-        max_Q = 500; 
-
-        switch layout
-            case 1 % 2-2-1: p1=[0,100], p2=[300,500]
-                lb = [0,   300, 0, 0, 0];
-                ub = [100, 500, max_Q, max_Q, max_Q];
-                
-            case 2 % 1-2-2: p1=[300,500], p2=[0,100]
-                lb = [300, 0,   0, 0, 0];
-                ub = [500, 100, max_Q, max_Q, max_Q];
-                
-            case 3 % 3-2-0: p1=[0,100], p2=[300,500]
-                lb = [0,   300, 0, 0, 0];
-                ub = [100, 500, max_Q, max_Q, max_Q];
-                
-            case 4 % 3-0-2: p1=[0,100], p2=[0,100]
-                lb = [0,   0,   0, 0, 0];
-                ub = [100, 100, max_Q, max_Q, max_Q];
-
-            case 5 % 2-0-3: p1=[0,100], p2=[0,100]
-                lb = [0,   0,   0, 0, 0];
-                ub = [100, 100, max_Q, max_Q, max_Q];
-
-            case 6 % 0-2-3: p1=[300,500], p2=[0,100]
-                lb = [300, 0,   0, 0, 0];
-                ub = [500, 100, max_Q, max_Q, max_Q];
-
-            case 7 % 1-4-0: p1=[300,500], p2=[300,500]
-                lb = [300, 300, 0, 0, 0];
-                ub = [500, 500, max_Q, max_Q, max_Q];
-
-            case 8 % 0-4-1: p1=[300,500], p2=[300,500]
-                lb = [300, 300, 0, 0, 0];
-                ub = [500, 500, max_Q, max_Q, max_Q];
-
-            otherwise
-                error('Invalid layout index: %d', layout);
-        end
+        [lb, ub] = getLayoutBounds(layout); % Use helper function
         
         % --- 3. Define function handles ---
         objFun = @objectiveFcn; 
@@ -136,7 +101,7 @@ function [AllLayoutResults] = runGlobalOptimization()
         AllLayoutResults(layout, :) = [fval_final, x_opt_final];
     end
     
-    % --- 5. Report and Finalize Results ---
+    % --- 5. Report and Find Best Continuous Solution ---
     
     fprintf('\n\n--- SUMMARY OF CONTINUOUS OPTIMIZATION RESULTS ---\n');
     valid_results = AllLayoutResults(~isinf(AllLayoutResults(:,1)), :);
@@ -164,30 +129,91 @@ function [AllLayoutResults] = runGlobalOptimization()
         end
     end
 
-    % Find the best continuous solution for visualization
+    % Find the best continuous solution
     [min_Q, best_row_idx] = min(AllLayoutResults(:, 1));
-    
     best_x = AllLayoutResults(best_row_idx, 2:end); % Parameters p1-p5
     best_layout_idx = best_row_idx; % Layout index is the row index
     
     % Apply the required rounding to the best continuous solution
     best_x_rounded = roundOptimalSolution(best_x);
     
-    % Recalculate Q_total with the rounded values for reporting
-    min_Q_rounded = objectiveFcn(best_x_rounded);
+% --- 6. POST-ROUNDING REFINEMENT (The fix for compliance) ---
+    
+    fprintf('\n\n--- POST-ROUNDING REFINEMENT FOR LAYOUT %d ---\n', best_layout_idx);
+    
+    % Define function handles for the best layout
+    objFun = @objectiveFcn; 
+    conFun = @(x) constraintFcn(x, best_layout_idx); 
+    
+    % Check compliance of the initial rounded solution
+    [c_rounded, ~] = conFun(best_x_rounded);
+    
+    if c_rounded < 1e-3 % Check if the rounded solution is already compliant
+        
+        % If compliant, use the rounded solution directly
+        x_final = best_x_rounded;
+        fval_final = objectiveFcn(x_final);
+        
+        fprintf('Initial rounded solution is compliant (c=%.3f).\n', c_rounded);
+    else
+        
+        % If NOT compliant, use fmincon to push it back into the feasible region
+        fprintf('Rounded solution is INCOMPLIANT (c=%.3f). Starting local refinement...\n', c_rounded);
+
+        % Retrieve bounds for fmincon
+        [lb, ub] = getLayoutBounds(best_layout_idx);
+
+        % Options for the refinement fmincon call
+        fmincon_refine_options = optimoptions('fmincon', ...
+            'Algorithm', 'sqp', ...
+            'Display', 'final', ... 
+            'MaxFunctionEvaluations', 2000); 
+            
+        % Initial guess is the (infeasible) rounded solution
+        x0 = best_x_rounded; 
+        
+        % Run fmincon to refine the rounded solution to the nearest compliant minimum
+        [x_refined, fval_refined] = fmincon(objFun, x0, ...
+            [], [], ...     % A, b 
+            [], [], ...     % Aeq, beq 
+            lb, ub, ...     % Lower and upper bounds
+            conFun, ...     % Nonlinear constraint function
+            fmincon_refine_options); 
+        
+        % Check final compliance of the refined solution
+        [c_refined, ~] = conFun(x_refined);
+        if c_refined > 1e-3
+            warning('Refinement FAILED to find a compliant solution. Final result may be infeasible.');
+        end
+        
+        % The critical final step: Re-round the refined solution to enforce precision
+        x_final = roundOptimalSolution(x_refined);
+        fval_final = objectiveFcn(x_final);
+        
+        fprintf('Refined parameters were successfully found and re-rounded.\n');
+    end
+    
+    % Final Check and Report
+    [c_final_check, ~] = conFun(x_final);
+    
+    if c_final_check > 1e-3
+        fprintf('\n*** WARNING: FINAL ROUNDED SOLUTION IS STILL INFEASIBLE (c=%.3f) ***\n', c_final_check);
+    else
+        fprintf('\nFINAL ROUNDED SOLUTION IS COMPLIANT (c=%.3f).\n', c_final_check);
+    end
 
     fprintf('\n\n==============================================\n');
     fprintf('        GLOBAL OPTIMIZATION COMPLETE \n');
     fprintf('==============================================\n');
     fprintf('Best Layout: %d\n', best_layout_idx);
-    fprintf('Minimum Q_total (Rounded): %f m^3/day\n', min_Q_rounded);
-    disp('Optimal Parameters (Rounded) [p1 (0.5m), p2 (0.5m), Q (3 dec)]:');
-    disp(best_x_rounded);
+    fprintf('Minimum Q_total (Final Rounded, Compliant): %f m^3/day\n', fval_final);
+    disp('Optimal Parameters (Final Rounded) [p1 (0.5m), p2 (0.5m), Q (3 dec)]:');
+    disp(x_final);
     
-    % --- 6. Build the final Wells matrix for the best *rounded* solution ---
-    Wells_final = buildWellsMatrix(best_x_rounded, best_layout_idx);
+    % --- 7. Build the final Wells matrix for the best *rounded* solution ---
+    Wells_final = buildWellsMatrix(x_final, best_layout_idx);
     
-    % % --- 7. Visualize and check the final solution ---
+    % % --- 8. Visualize and check the final solution ---
     % disp('Visualizing the best rounded solution...');
     % headGrid_final = drawSite(Wells_final(:,1), Wells_final(:,2), Wells_final(:,3));
     % 
