@@ -1,16 +1,27 @@
 function[headGrid] =  drawSite(x, y, q)
     figure;   
-    % theme light; % 'theme' is not a standard MATLAB function, commented out
+    theme light;
     axis equal; % change aspect ratio to equal
 
+    % --- 1. Define Grid and Calculate Dynamic Size ---
 
-    xgrid = [0:10:600];
-    ygrid = [-200:10:200];
+    % Set the desired step size (e.g., 0.5 for high accuracy)
+    step_size = 5;
 
-    headGrid = NaN(41,61);
+    xgrid = [0:step_size:600];
+    ygrid = [-200:step_size:200];
+    
+    % Dynamically calculate the dimensions of the head grid
+    num_x_points = length(xgrid); % Number of columns (e.g., 1201 for 0.5 step)
+    num_y_points = length(ygrid); % Number of rows (e.g., 801 for 0.5 step)
 
-    for row = 1:41
-        for col = 1:61
+    % Initialize headGrid with the calculated dimensions
+    headGrid = NaN(num_y_points, num_x_points);
+
+    % --- 2. Compute Head Values ---
+
+    for row = 1:num_y_points
+        for col = 1:num_x_points
             headGrid(row, col) = computeHead(xgrid(col), ygrid(row), x, y, q); 
         end
     end
