@@ -1,4 +1,4 @@
-% runTrials_v2.m
+% runTrials.m
 %
 % This script runs the optimization function multiple times (N trials),
 % choosing between the Global (GA + fmincon) or Local (fmincon only) solver.
@@ -6,7 +6,7 @@
 % comparative plot of Q_total performance across the 8 layouts.
 
 % --- Configuration ---
-N = 10; % Define the total number of times to run the optimization (Adjust as needed)
+N = 1; % Define the total number of times to run the optimization (Adjust as needed)
 
 % --- NEW: Optimization Type Selector ---
 % Set to 'Global' to run GA + fmincon (slower, more robust)
