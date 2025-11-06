@@ -7,11 +7,17 @@
 % p3 - controls the flow rate (Q) of pump 1 & 2
 % p4 - controls the flow rate (Q) of pump 3 & 4
 % p5 - controls the flow rate (Q) of pump 5
+%
 % layout - determines the configuration of the pumps:
-%          1: 2-2-1 layout
-%          2: 3-2-0 layout
-%          3: 1-4-0 layout
-%          4: 1-2-2 layout
+%       1: 2-2-1
+%       2: 1-2-2
+%       3: 3-2-0
+%       4: 3-0-2
+%       5: 2-0-3
+%       6: 0-2-3
+%       7: 1-4-0
+%       8: 0-4-1
+%        
 % Graphs - boolean to indicate if graphs should be drawn
 % Compliance - boolean to indicate if compliance should be checked
 %
