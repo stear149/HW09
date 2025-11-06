@@ -187,11 +187,11 @@ function [AllLayoutResults] = runGlobalOptimization()
     % --- 6. Build the final Wells matrix for the best *rounded* solution ---
     Wells_final = buildWellsMatrix(best_x_rounded, best_layout_idx);
     
-    % --- 7. Visualize and check the final solution ---
-    disp('Visualizing the best rounded solution...');
-    headGrid_final = drawSite(Wells_final(:,1), Wells_final(:,2), Wells_final(:,3));
-    
-    disp('Running final compliance check on the best ROUNDED solution:');
-    complianceChecker(headGrid_final);
+    % % --- 7. Visualize and check the final solution ---
+    % disp('Visualizing the best rounded solution...');
+    % headGrid_final = drawSite(Wells_final(:,1), Wells_final(:,2), Wells_final(:,3));
+    % 
+    % disp('Running final compliance check on the best ROUNDED solution:');
+    % complianceChecker(headGrid_final);
 
 end
