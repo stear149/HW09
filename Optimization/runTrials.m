@@ -1,27 +1,47 @@
-% runTrials.m
+% runTrials_v2.m
 %
-% This script runs the global optimization function multiple times (N trials),
-% consolidates the results, saves them to a .mat file, and generates a
+% This script runs the optimization function multiple times (N trials),
+% choosing between the Global (GA + fmincon) or Local (fmincon only) solver.
+% It consolidates results, saves them to a .mat file, and generates a
 % comparative plot of Q_total performance across the 8 layouts.
 
 % --- Configuration ---
-N = 10000; % Define the total number of times to run the optimization (Adjust as needed)
+N = 10; % Define the total number of times to run the optimization (Adjust as needed)
+
+% --- NEW: Optimization Type Selector ---
+% Set to 'Global' to run GA + fmincon (slower, more robust)
+% Set to 'Local' to run fmincon only (faster, dependent on starting point)
+OptimizationType = 'Global'; % **<-- SET OPTIMIZATION TYPE HERE**
+
+% --- Function Handle Setup ---
+if strcmpi(OptimizationType, 'Global')
+    % Assumes 'runGlobalOptimization.m' is in the path
+    optim_function = @runGlobalOptimization;
+    optim_name = 'Global (GA + fmincon)';
+elseif strcmpi(OptimizationType, 'Local')
+    % Assumes 'runLocalOptimization.m' is in the path
+    optim_function = @runLocalOptimization;
+    optim_name = 'Local (fmincon only)';
+else
+    error('Invalid OptimizationType. Please use ''Global'' or ''Local''.');
+end
+
 
 % Initialize a cell array to store the results from each trial (N trials)
-% Each cell will store an 8x6 matrix (8 layouts, 6 columns of data)
 all_trial_results = cell(N, 1);
 
-fprintf('Starting %d global optimization trials...\n', N);
+fprintf('Starting %d **%s** optimization trials...\n', N, optim_name);
+fprintf('Optimization function: %s\n', func2str(optim_function));
 
 % --- Run Loop ---
 for trial = 1:N
     fprintf('\n\n===================================================\n');
-    fprintf('              STARTING TRIAL %d OF %d\n', trial, N);
+    fprintf('           STARTING TRIAL %d OF %d (%s)\n', trial, N, OptimizationType);
     fprintf('===================================================\n');
     
-    % Call the optimization function, which returns the 8x6 result matrix
+    % Call the selected optimization function
     % [Q_total, p1, p2, p3, p4, p5] for all 8 layouts
-    LayoutResults_i = runGlobalOptimization();
+    LayoutResults_i = optim_function();
     
     % Store the 8x6 matrix for this trial
     all_trial_results{trial} = LayoutResults_i;
@@ -32,7 +52,6 @@ end
 % --- 1. Data Consolidation and Saving ---
 
 % Filter out any empty results in case a trial failed completely 
-% (though runGlobalOptimization is designed to return an 8x6 matrix)
 valid_results_cells = all_trial_results(~cellfun('isempty', all_trial_results));
 
 if isempty(valid_results_cells)
@@ -40,15 +59,14 @@ if isempty(valid_results_cells)
 end
 
 % Concatenate all 8x6 matrices vertically into one large matrix.
-% Total size will be (N * 8) x 6
 FinalResultsMatrix = vertcat(valid_results_cells{:});
 
 % Determine the actual number of full trials successfully run
 num_successful_trials = size(FinalResultsMatrix, 1) / 8;
 
 % Create index columns for the consolidated data
-TrialIndexColumn = repelem(1:num_successful_trials, 8)'; % Repeat trial number 8 times
-LayoutIndexColumn = repmat(1:8, 1, num_successful_trials)'; % Repeat 1 to 8, N times
+TrialIndexColumn = repelem(1:num_successful_trials, 8)'; 
+LayoutIndexColumn = repmat(1:8, 1, num_successful_trials)'; 
 
 % Final consolidated matrix: [Trial #, Layout #, Q_total, p1, p2, p3, p4, p5]
 FinalSaveMatrix = [TrialIndexColumn, LayoutIndexColumn, FinalResultsMatrix];
@@ -57,8 +75,9 @@ FinalSaveMatrix = [TrialIndexColumn, LayoutIndexColumn, FinalResultsMatrix];
 header = {'Trial_N', 'Layout_ID', 'Q_total', 'p1', 'p2', 'p3', 'p4', 'p5'};
 
 % Save the final matrix to a file
-outputFileName = sprintf('GlobalOptimization_Results_%d_Trials_%s.mat', num_successful_trials, datestr(now, 'yyyy-mm-dd_HHMM'));
-save(outputFileName, 'FinalSaveMatrix', 'header');
+% Include optimization type in the filename
+outputFileName = sprintf('%s_Optimization_Results_%d_Trials_%s.mat', OptimizationType, num_successful_trials, datestr(now, 'yyyy-mm-dd_HHMM'));
+save(outputFileName, 'FinalSaveMatrix', 'header', 'OptimizationType');
 
 fprintf('\n\nAll %d trials complete.\n', N);
 fprintf('Total successful layouts: %d\n', size(FinalResultsMatrix, 1));
@@ -67,7 +86,6 @@ fprintf('Final results saved to: **%s**\n', outputFileName);
 % --- 2. Plotting and Statistical Analysis ---
 
 % Isolate relevant data: [Layout ID, Q_total]
-% This is where PlotData is defined.
 PlotData = FinalSaveMatrix(:, [2, 3]); 
 
 % Filter out failed runs (where Q_total is Inf or NaN)
@@ -85,7 +103,6 @@ min_Q = NaN(1, num_layouts);
 
 % Calculate mean and min Q_total for each layout
 for i = 1:num_layouts
-    % Find all Q_totals for the current layout
     Q_for_layout = PlotData(PlotData(:, 1) == i, 2);
     
     if ~isempty(Q_for_layout)
@@ -117,7 +134,7 @@ h_global_min = scatter(global_min_Layout, global_min_Q, 150, 'g', 'o', 'filled',
 
 
 % --- Plot Customization ---
-title(sprintf('Optimization Results: Q_{total} vs. Layout (N=%d Trials)', N));
+title(sprintf('%s Optimization Results: Q_{total} vs. Layout (N=%d Trials)', optim_name, N));
 xlabel('Layout ID');
 ylabel('Q_{total} (m^3/day)');
 
