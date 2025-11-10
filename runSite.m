@@ -36,7 +36,7 @@
 %
 %   Current Best:
 %       runSite(84, 441.5, 204.5, 353.909, 99.2, 3, true, true)
-%       Amax = [1216]
+%       Total Q: 1216.018 
 %
 % Version:
 %   4 November 2025
